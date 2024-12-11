@@ -1,0 +1,108 @@
+1.) Under normal settings, there is no validation results printout. Reason until now unclear.
+2.) When training INCLUDING classification loss, with the default learning rate (0.01), there was NO loss reduction whatsoever. Reduced to 0.0001 as a result.
+3.) Actually the classif. loss is not applicable with the current dataset, as the class is irrelevant, only the box location, shape, IoU and cell assigned should matter.
+I try training with cls_loss = 0.0 in the hyp.yaml file therefore.
+4.) I made use of keeping aspect ratio (rect and image-size -- equals "letterboxing") now. Yolov7 has an auto-resize mechanism.
+5.) I want to try a learning rate starting from 0.001 and going down by 0.001. Yolov7 by default uses exponential decay. -- seemed to me to be too high for training. 
+Reduced
+6.) Decided to go back to class loss 1 to see if there are ANY bounding boxes predicted. With class loss == 0 there are NO bounding boxes in the predicted output.
+Not clear what the problem could be.
+7.) I went back and re-fetched and fixed the hard hat recognition yolov7 model which works perfectly (training: prediction bounding
+boxes are produced). I copied that folder and inserted it into the bone fracture detection folder in order to test if that code would work.
+I used the default hyp and opt settings.
+8.) Training with the new code did not yield any change in results: no boxes predicted at least visually on the output pictures.
+I changed to augmentation code from the hyp file, which did not help.
+9.) I changed hyp parameters in this way: losses commented out, excluding some augmentations. No change in results.
+I changed the box, cls and obj parameters (=gains) in order to set cls to 0 and increase box (before: 0.05, now: 0.35)
+in order to put more accent on boxes.
+lr0: 0.0005  # initial learning rate (SGD=1E-2, Adam=1E-3)
+lrf: 0.0001  # final OneCycleLR learning rate (lr0 * lrf)
+momentum: 0.937  # SGD momentum/Adam beta1
+weight_decay: 0.0005  # optimizer weight decay 5e-4
+warmup_epochs: 3.0  # warmup epochs (fractions ok)
+warmup_momentum: 0.8  # warmup initial momentum
+warmup_bias_lr: 0.1  # warmup initial bias lr
+box: 0.35 #0.05  # box loss gain
+cls: 0.1 #0.3  # cls loss gain
+cls_pw: 1.0  # cls BCELoss positive_weight
+obj: 0.7  # obj loss gain (scale with pixels)
+obj_pw: 1.0  # obj BCELoss positive_weight
+iou_t: 0.5 #0.20  # IoU training threshold
+anchor_t: 4.0  # anchor-multiple threshold
+anchors: 3  # anchors per output layer (0 to ignore)
+fl_gamma: 0.0  # focal loss gamma (efficientDet default gamma=1.5)
+hsv_h: 0.015  # image HSV-Hue augmentation (fraction)
+hsv_s: 0.3  # image HSV-Saturation augmentation (fraction)
+hsv_v: 0.4  # image HSV-Value augmentation (fraction)
+degrees: 0.0  # image rotation (+/- deg)
+translate: 0.0  # image translation (+/- fraction)
+scale: 0.0  # image scale (+/- gain)
+shear: 0.0  # image shear (+/- deg)
+perspective: 0.0  # image perspective (+/- fraction), range 0-0.001
+flipud: 0.0  # 0.0 # image flip up-down (probability)
+fliplr: 0.0  # image flip left-right (probability)
+mosaic: 0.0  # image mosaic (probability)
+mixup: 0.0 # image mixup (probability)
+copy_paste: 0.0  # image copy paste (probability) - retains original shape
+paste_in: 0.0 # 0.15  # image copy paste (probability) - is adapted to context
+loss_ota: 1 # use ComputeLossOTA, use 0 for faster training
+#obj_loss: 1.0  # Set this to the desired value for objectness loss
+#cls_loss: 1.0  # default: 1.0
+#box_loss: 1.0  # Set this to the desired value for box loss
+
+result: learning does not change. loss declines slowly and there are NO bounding boxes.
+
+Ideas what can be the root cause of the model failing to learn:
+- fractures are not enough visible -> model cannot recognize the difference between the fracture and the rest of the bone.
+- model is too weak: too few model parameters or require more sophisticated model
+- resolution is too bad -> need higher picture resolution or e.g. use transformers
+
+
+YOLO-NAS:
+- On roboflow, yoloNAS showed quite good results despite polygon bboxes.
+- when downloading a pretrained model, the CLASS loss did not go down very well within the first 30 epochs, it got stuck at approximately 1.2-1.3.
+- I tried various settings, also reduced the learning rate to 1e-6 from 5e-4, but that was with finetuning. This all did not help. Rmsprop also did not help.
+I stuck with the cosine learning rate scheduler.
+- I want to try again without the finetuning option and see what comes out.
+
+1.) The settings which eventually worked were the following:
+- forearm only
+- various picture-level augmentations
+- A scheduled loss decrease algorithm (stepwise)
+- Saving the model at fixed points in time (epochs)
+
+
+After the meeting with the client, this is what came out:
+1) They want certain validation metrics done.
+2) Model needs to be improved in order to work basically for ANY bone fractures
+- on forearm only the model was quite decent, but ONLY with increased recall and deceased precision
+(many false positives, but many true positives and few false negatives)
+--> hints at that the model here learned what forearm fractures can look like.
+- I should rerun the many classes dataset with augmentation of the data.
+However, it would be good to add only a certain class and check the ground truth data.
+- regarding the customer data, their pictures are WAY larger --> scales of fine fractures cannot
+be recognized.
+
+
+- the bone fracture dataset has the following format: class-ID float-center-x float-center-y width-float height-float.
+The conversion to the yolov7 foramt is as follows: 
+    # Convert polygon (list of coordinates) to bounding box
+    min_x = min(polygon[::2])  # x coordinates are at even indices
+    max_x = max(polygon[::2])
+    min_y = min(polygon[1::2])  # y coordinates are at odd indices
+    max_y = max(polygon[1::2])
+
+    # Compute the center of the bounding box
+    center_x = (min_x + max_x) / 2
+    center_y = (min_y + max_y) / 2
+
+    # Compute the width and height of the bounding box
+    width = max_x - min_x
+    height = max_y - min_y
+
+    # Normalize values to [0, 1] based on image dimensions
+    #center_x /= img_width
+    #center_y /= img_height
+    #width /= img_width
+    #height /= img_height
+- the bone fracture dataset is in colored format. Conversion to grayscale might be necessary.
