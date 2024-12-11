@@ -1,0 +1,82 @@
+# Path to the initial weights file (typically a pre-trained model)
+weights: "yolo_v7/yolov7_training.pt"
+# Path to the model configuration YAML file (defines model architecture)
+cfg: ""
+# Path to the dataset configuration file (contains dataset paths and labels)
+data: "00_data/2024-11-08/data.yaml"
+# Path to the hyperparameters configuration file
+hyp: "data/hyp_bone_frac.yaml"
+# Number of epochs to train the model (default is 30)
+epochs: 30
+# Total batch size for all GPUs (adjustable depending on hardware and memory)
+batch_size: 8
+# List specifying image sizes for training and testing (train, test sizes)
+img_size:
+  - 640
+  - 640
+# Boolean flag for rectangular training (training with variable image sizes)
+rect: true
+# Resume from the most recent checkpoint if set to True (otherwise starts fresh)
+resume: false
+# If set to True, only save the final checkpoint (no intermediate checkpoints)
+nosave: false
+# If set to True, the model will not be tested after training (only final epoch is tested)
+notest: false
+# If set to True, disables the autoanchor check (used for anchor box generation in YOLO)
+noautoanchor: false
+# If set to True, evolves hyperparameters during training (genetic algorithm approach)
+evolve: false
+# gsutil bucket to use for storing results in the cloud (leave empty if not needed)
+bucket: ""
+# If set to True, images will be cached in memory for faster training
+cache_images: false
+# If set to True, uses weighted image selection during training to prioritize harder examples
+image_weights: true
+# Specify the device to run the model on (can be a single GPU, multiple GPUs, or CPU)
+device: "cuda" # before: ""
+# If set to True, varies the image size +/- 50% during training for better generalization
+multi_scale: true
+# If set to True, forces the model to treat multi-class data as a single class (used for single-class training)
+single_cls: true
+# If set to True, use Adam optimizer (alternative to default SGD)
+adam: false
+optimizer: rmsprop # before field didn't exist
+# If set to True, uses SyncBatchNorm (required for Distributed Data Parallel training)
+sync_bn: false
+# Local rank for Distributed Data Parallel (DDP), do not modify unless using multi-GPU setup
+local_rank: -1
+# Number of workers to use for loading data (increases throughput by using multiple threads)
+workers: 8
+# Path to save the model and results (typically inside a "runs/train" folder)
+project: "runs/train"
+# W&B (Weights and Biases) entity name (if using W&B for experiment tracking)
+entity: null
+# Name of the experiment or project (used for saving results)
+name: "finetune_bone_frac"
+# If set to True, allows saving over an existing project without renaming it
+exist_ok: false
+# If set to True, uses a quad dataloader (optimized for high-speed data loading)
+quad: true
+# If set to True, uses a linear learning rate schedule (instead of exponential decay)
+linear_lr: false
+# Label smoothing factor (between 0 and 1) to improve generalization and prevent overfitting
+label_smoothing: 0.0
+# If set to True, uploads the dataset as a W&B artifact table
+upload_dataset: false
+# Interval for logging bounding-box images in W&B (set to -1 to disable)
+bbox_interval: -1
+# Period (in epochs) after which to save the model (set to -1 for no periodical saving)
+save_period: -1
+# Version alias for the dataset artifact (default is "latest")
+artifact_alias: "latest"
+# List of layers to freeze during training (e.g., freeze first few layers of the backbone)
+freeze:
+  - 0
+# If set to True, assumes maximum recall as 1.0 for AP calculation (YOLOv5 metric)
+v5_metric: false
+plots: true
+verbose: true
+val_interval: 1
+logger: tensorboard
+conf_thres: 0.25  # Lower the confidence threshold (default: 0.25)
+iou_thres: 0.45   # Lower the NMS threshold (default: 0.45)
