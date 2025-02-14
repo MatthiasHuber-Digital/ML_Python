@@ -1,6 +1,0 @@
-2024-11-08:
-unchanged bone fracture dataset kaggle
-https://www.kaggle.com/datasets/pkdarabi/bone-fracture-detection-computer-vision-project
-
-2024-11-13:
-reclassified to single class

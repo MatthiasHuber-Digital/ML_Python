@@ -3,7 +3,7 @@ from enum import Enum
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from PIL import Image
+from PIL import Image, ImageOps
 from pathlib import Path
 from skimage.filters import unsharp_mask, meijering, sato, scharr, hessian
 from skimage.exposure import equalize_hist, equalize_adapthist
@@ -336,3 +336,82 @@ def get_label_and_image_paths(path_images_dir: str, path_labels_dir: str) -> tup
         "list_paths_images": list_paths_images,
         "list_paths_labels": list_paths_labels,
     }
+
+
+def resize_image_with_padding(
+    image_path: str, target_width: int, target_height: int, keep_aspect_ratio: bool
+) -> Image:
+    """
+    Resize an image to the target size with optional aspect ratio maintenance and padding.
+
+    :param image_path: Path to the input image.
+    :param target_width: Desired width of the output image.
+    :param target_height: Desired height of the output image.
+    :param keep_aspect_ratio: Whether to maintain the aspect ratio.
+    :return: Resized and optionally padded Image object.
+    """
+    # Open the image
+    image = Image.open(image_path)
+
+    if keep_aspect_ratio:
+        # Resize while keeping aspect ratio
+        image.thumbnail((target_width, target_height))
+
+        if image.width > image.height:
+            # If the image is wider than tall, resize it to the width while maintaining aspect ratio
+            resized_image = image.resize(
+                (target_width, int(target_width * image.height / image.width))
+            )
+            # Add padding to the top and bottom
+            padded_image = Image.new("RGB", (target_width, target_height), (255, 255, 255))
+            y_offset = (target_height - resized_image.height) // 2
+
+            padded_image.paste(resized_image, (0, y_offset))
+        else:
+            # If the image is taller than wide, resize it to the height while maintaining aspect ratio
+            resized_image = image.resize(
+                (int(target_height * image.width / image.height), target_height)
+            )
+            # Add padding to the left and right
+            padded_image = Image.new("RGB", (target_width, target_height), (255, 255, 255))
+            x_offset = (target_width - resized_image.width) // 2
+            padded_image.paste(resized_image, (x_offset, 0))
+
+        return padded_image
+    else:
+        # Directly resize without keeping aspect ratio
+        return image.resize((target_width, target_height))
+
+
+def batch_resize_images(
+    path_input_dir: str,
+    path_output_dir: str,
+    target_width: int,
+    target_height: int,
+    keep_aspect_ratio: bool,
+):
+    """
+    Resize all images in a directory and save the output in another directory.
+
+    :param path_input_dir: Directory containing input images.
+    :param path_output_dir: Directory to save resized images.
+    :param target_width: Desired width of the output images.
+    :param target_height: Desired height of the output images.
+    :param keep_aspect_ratio: Whether to maintain the aspect ratio.
+    """
+    if not os.path.exists(path_output_dir):
+        os.makedirs(path_output_dir)
+
+    for filename in tqdm(os.listdir(path_input_dir)):
+        if filename.lower().endswith(("png", "jpg", "jpeg", "bmp", "gif")):
+            input_path = os.path.join(path_input_dir, filename)
+            output_path = os.path.join(path_output_dir, filename)
+
+            try:
+                resized_image = resize_image_with_padding(
+                    input_path, target_width, target_height, keep_aspect_ratio
+                )
+                resized_image.save(output_path)
+                print(f"Saved resized image: {output_path}")
+            except Exception as e:
+                print(f"Error processing {input_path}: {e}")
